@@ -1,0 +1,115 @@
+    var elementPos, windowCoords, bubbleCoords, topCoord, bottomCoord, leftCoord, rightCoord, setArrowTopMargin, setArrowLeftMargin, bubCSS;
+      placement = placement || "right";
+    
+    /* Positioning coordinates */
+    elementPos = $.extend({}, ( $(eventObj.target).offset()), { width : eventObj.target.offsetWidth, height : eventObj.target.offsetHeight});
+    windowCoords = { height:$(window).height(), width:$(window).width(), scrollTop : $(window).scrollTop()};
+    bubbleCoords = {width : bubbleContainer.el().width(), height: bubbleContainer.el().height()};
+
+    /* STEP 1: Placement overrides: if initial placement goes off screen, the opposite placement is substituted  */
+    switch (placement) {
+      case 'bottom': //if bottom goes off the screen and a top placement won't go above the window... 
+        if(elementPos.top + elementPos.height + bubbleCoords.height  > windowCoords.height 
+          && elementPos.top - bubbleCoords.height >= 0){
+            placement = "top";
+        }
+      break;
+      case 'top':
+        if(elementPos.top - windowCoords.scrollTop - bubbleCoords.height  < 0){
+          placement = "bottom";
+        }
+      break;
+      case 'left':
+        if( elementPos.left < bubbleCoords.width ){
+          placement = "right"; 
+        }
+      break;
+      case 'right': //if right placement goes off the screen and (after recalibration) can fit on the other side of the element... 
+        if(elementPos.left + elementPos.width + bubbleCoords.width > windowCoords.width){
+          // refresh the bubble sizes since bubble may resize when it's been jammed to the right side
+          bubbleContainer.el().css({left:windowCoords.width *-1});
+          bubbleCoords.width = bubbleContainer.el().width();
+          bubbleCoords.height = bubbleContainer.el().height();
+          if(elementPos.left > bubbleCoords.width){
+            placement = "left" ;
+          }
+        }
+      break;
+    }
+    
+    /* STEP 2: Get coordinates so we can nudge bubbles to keep them within the viewport */
+    topCoord = elementPos.top + elementPos.height / 2 - bubbleCoords.height / 2;
+    bottomCoord = elementPos.top + elementPos.height / 2 + bubbleCoords.height / 2; 
+    leftCoord = elementPos.left + elementPos.width / 2 - bubbleCoords.width / 2;
+    rightCoord = elementPos.left + elementPos.width / 2 + bubbleCoords.width / 2;
+    leftCoord = (leftCoord < 0)? 0 : (rightCoord > windowCoords.width)?   leftCoord -(rightCoord - windowCoords.width) :  leftCoord ;
+    arrow = bubbleContainer.el().find(".arrow");
+    
+    setArrowTopMargin = function(){
+      var arrowMargin;
+      // shift the arrow top/bottom
+      if(topCoord - windowCoords.scrollTop < 0){
+        arrowMargin = topCoord - windowCoords.scrollTop - elementPos.height / 2;
+        arrow.css({marginTop : arrowMargin});
+      }
+      else if(bottomCoord > windowCoords.height + windowCoords.scrollTop){
+        arrowMargin = topCoord - (windowCoords.height + windowCoords.scrollTop - bubbleCoords.height +  elementPos.height/2);
+        arrow.css({marginTop : arrowMargin});
+      }
+      else{
+        arrow.css({marginTop : -11});
+      }
+    };
+
+     setArrowLeftMargin = function(){
+      // shift the arrow left/right
+      if(leftCoord === 0){
+          arrow.css({marginLeft :
+           5.5 + elementPos.width/2 + bubbleCoords.width/2 *-1});
+      }
+      else if(rightCoord > windowCoords.width){
+          arrow.css({marginLeft :
+          rightCoord - windowCoords.width - 11});
+      }
+      else{
+         arrow.css({marginLeft : -11});
+      }
+    };
+              
+    /*  Set placement offsets with intelligence
+    ------------------------------------------------------------------ */
+    switch (placement) {
+      case 'bottom':
+        bubCSS = {top: elementPos.top + elementPos.height, 
+          left: leftCoord
+        };
+        setArrowLeftMargin();
+
+      break;
+      case 'top':
+        bubCSS = {top: elementPos.top - bubbleCoords.height, 
+          left: leftCoord
+        };
+        setArrowLeftMargin();
+      break;
+      case 'left':
+        bubCSS = {top: ((topCoord - windowCoords.scrollTop < 0)? windowCoords.scrollTop : (bottomCoord > windowCoords.height + windowCoords.scrollTop)? windowCoords.height + windowCoords.scrollTop - bubbleCoords.height: topCoord),
+        left: elementPos.left - bubbleCoords.width
+        };
+        setArrowTopMargin();
+      break;
+      case 'right':
+        bubCSS = {
+            top: ((topCoord - windowCoords.scrollTop < 0)? windowCoords.scrollTop : (bottomCoord > windowCoords.height + windowCoords.scrollTop)? windowCoords.height + windowCoords.scrollTop - bubbleCoords.height: topCoord),
+            left: elementPos.left + elementPos.width
+        };
+        setArrowTopMargin();
+
+      break;
+    }
+    // show bubble
+    bubbleContainer.css(bubCSS);
+    bubbleContainer.removeClass("noArrow left right top bottom");
+    bubbleContainer.addClass(placement);
+    bubbleContainer.show();
+  };
